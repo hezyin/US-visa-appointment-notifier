@@ -68,13 +68,6 @@ const checkForSchedules = async (page) => {
 
 
 const process = async (browser) => {
-  logStep(`starting process with ${maxTries} tries left`);
-
-  if(maxTries-- <= 0){
-    console.log('Reached Max tries')
-    return
-  }
-
   const page = await browser.newPage();
 
   if(!isLoggedIn) {
@@ -85,21 +78,32 @@ const process = async (browser) => {
   if(earliestDate && isBefore(earliestDate, parseISO(NOTIFY_ON_DATE_BEFORE))){
     await notifyMe(earliestDate);
   }
+}
 
-  await delay(NEXT_SCHEDULE_POLL)
-
-  await process(browser)
+const generateRandomNumber = (x) => {
+  let range = x * 0.3;
+  return Math.floor(Math.random() * range + (x - range/2));
 }
 
 
 (async () => {
   const browser = await puppeteer.launch(!IS_PROD ? {headless: false}: undefined);
 
-  try{
-    await process(browser);
-  }catch(err){
-    console.error(err);
+  logStep(`starting process with ${maxTries} tries left`);
+
+  while (maxTries > 0) {
+    try {
+      await process(browser);
+    }
+    catch (err) {
+      console.log(err);
+    }
+    maxTries--;
+    let randomNumber = generateRandomNumber(NEXT_SCHEDULE_POLL);
+    logStep(`next attempt in ${randomNumber}`);
+    await delay(randomNumber);
   }
 
   await browser.close();
+
 })();
